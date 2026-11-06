@@ -1,0 +1,42 @@
+meta {
+  name: 04 stale edit
+  type: http
+  seq: 4
+}
+
+docs {
+  An edit based on the old version that is older than the server's record (6.3, case 3).
+}
+
+post {
+  url: {{baseUrl}}/api/v1/sync/push
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:pre-request {
+  const kcal = require("./lib/kcal.js");
+  req.setBody({
+    entries: [
+      kcal.entryChange(bru.getEnvVar("entryId"), {
+        baseVersion: Number(bru.getEnvVar("entryVersion")),
+        name: "Stale edit",
+        updatedAt: kcal.utcNow(-60 * 60 * 1000)
+      })
+    ]
+  });
+}
+
+tests {
+  test("edit is rejected with olderEdit", function () {
+    expect(res.status).to.equal(200);
+    const result = res.body.entries[0];
+    expect(result.status).to.equal("rejected");
+    expect(result.reason).to.equal("olderEdit");
+    expect(result.current.name).to.equal("Edited elsewhere");
+  });
+}

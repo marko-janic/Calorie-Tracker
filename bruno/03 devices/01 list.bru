@@ -1,0 +1,23 @@
+meta {
+  name: 01 list
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/devices
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("lists this device as current", function () {
+    expect(res.status).to.equal(200);
+    const current = res.body.find((d) => d.isCurrent);
+    expect(current.id).to.equal(bru.getEnvVar("deviceId"));
+  });
+}

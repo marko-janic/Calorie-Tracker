@@ -1,0 +1,42 @@
+meta {
+  name: 02 pair
+  type: http
+  seq: 2
+}
+
+docs {
+  Set `pairingCode` in the environment first, e.g. from `dotnet run` (startup log) or
+  `docker compose exec kcal-server kcal pair`. Codes are single use.
+}
+
+post {
+  url: {{baseUrl}}/api/v1/devices/pair
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  const kcal = require("./lib/kcal.js");
+  const key = kcal.devKey(bru.getProcessEnv("KCAL_DEV_KEY_PKCS8"));
+  const publicKey = kcal.publicKeySpkiBase64(key);
+  const code = bru.getEnvVar("pairingCode");
+  req.setBody({
+    code,
+    deviceName: bru.getEnvVar("deviceName"),
+    publicKey,
+    signature: kcal.pairingSignature(key, bru.getEnvVar("serverId"), code, publicKey)
+  });
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setEnvVar("deviceId", res.body.deviceId);
+  }
+}
+
+tests {
+  test("device is paired", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.serverId).to.equal(bru.getEnvVar("serverId"));
+  });
+}

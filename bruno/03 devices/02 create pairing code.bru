@@ -1,0 +1,26 @@
+meta {
+  name: 02 create pairing code
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/pairing-codes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:post-response {
+  bru.setEnvVar("newPairingCode", res.body.code);
+}
+
+tests {
+  test("returns a code for another device", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.code).to.match(/^[0-9A-HJKMNP-TV-Z]{4}-[0-9A-HJKMNP-TV-Z]{4}$/);
+  });
+}

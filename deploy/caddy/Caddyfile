@@ -1,0 +1,20 @@
+{
+	# The server is not reachable from the internet, so certificates use the DNS challenge.
+	acme_dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+	# Only HTTPS is published.
+	auto_https disable_redirects
+}
+
+{$KCAL_API_HOST} {
+	@server path /api/* /download/* /openapi/*
+	handle @server {
+		reverse_proxy kcal-server:8080
+	}
+	handle {
+		redir {$KCAL_UI_ORIGIN}{uri}
+	}
+}
+
+{$KCAL_UI_HOST} {
+	reverse_proxy kcal-server:8080
+}

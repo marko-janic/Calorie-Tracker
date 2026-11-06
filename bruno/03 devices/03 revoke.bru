@@ -1,0 +1,29 @@
+meta {
+  name: 03 revoke
+  type: http
+  seq: 3
+}
+
+docs {
+  Revokes the Bruno device itself. Pair again (01 setup) with a new code afterwards.
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/devices/{{deviceId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:post-response {
+  bru.setEnvVar("accessToken", "");
+}
+
+tests {
+  test("device is revoked", function () {
+    expect(res.status).to.equal(204);
+  });
+}

@@ -1,0 +1,12 @@
+**/node_modules
+**/bin
+**/obj
+.git
+app/android
+app/.expo
+app/dist
+server/Kcal.Server/.data
+server/Kcal.Server/wwwroot
+deploy/.env
+bruno
+.agent-loop

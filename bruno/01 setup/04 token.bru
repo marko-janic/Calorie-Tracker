@@ -1,0 +1,34 @@
+meta {
+  name: 04 token
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/token
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  const kcal = require("./lib/kcal.js");
+  const key = kcal.devKey(bru.getProcessEnv("KCAL_DEV_KEY_PKCS8"));
+  const deviceId = bru.getEnvVar("deviceId");
+  const nonce = bru.getEnvVar("nonce");
+  req.setBody({
+    deviceId,
+    nonce,
+    signature: kcal.authSignature(key, bru.getEnvVar("serverId"), deviceId, nonce)
+  });
+}
+
+script:post-response {
+  bru.setEnvVar("accessToken", res.body.accessToken);
+}
+
+tests {
+  test("returns an access token", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.accessToken).to.be.a("string");
+  });
+}

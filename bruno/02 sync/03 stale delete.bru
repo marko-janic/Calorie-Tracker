@@ -1,0 +1,47 @@
+meta {
+  name: 03 stale delete
+  type: http
+  seq: 3
+}
+
+docs {
+  Simulates another device: an edit is pushed first, then a delete based on the old version.
+  The edit wins (6.3, case 5).
+}
+
+post {
+  url: {{baseUrl}}/api/v1/sync/push
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:pre-request {
+  const kcal = require("./lib/kcal.js");
+  const axios = require("axios");
+  const id = bru.getEnvVar("entryId");
+  const staleVersion = Number(bru.getEnvVar("entryVersion"));
+
+  // The concurrent edit (by "another device") moves the server past staleVersion
+  await axios.post(
+    `${bru.getEnvVar("baseUrl")}/api/v1/sync/push`,
+    { entries: [kcal.entryChange(id, { baseVersion: staleVersion, name: "Edited elsewhere", updatedAt: kcal.utcNow(-1000) })] },
+    { headers: { Authorization: `Bearer ${bru.getEnvVar("accessToken")}` } }
+  );
+
+  req.setBody({ entries: [kcal.entryChange(id, { baseVersion: staleVersion, deleted: true })] });
+}
+
+tests {
+  test("delete is rejected with deleteConflict", function () {
+    expect(res.status).to.equal(200);
+    const result = res.body.entries[0];
+    expect(result.status).to.equal("rejected");
+    expect(result.reason).to.equal("deleteConflict");
+    expect(result.current.deleted).to.equal(false);
+    expect(result.current.name).to.equal("Edited elsewhere");
+  });
+}

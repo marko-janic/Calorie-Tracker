@@ -1,0 +1,49 @@
+name: PR checks
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: VERSION must be greater than on main
+        run: |
+          PR_VERSION=$(tr -d '[:space:]' < VERSION)
+          MAIN_VERSION=$(git show origin/main:VERSION | tr -d '[:space:]')
+          HIGHEST=$(printf '%s\n' "$MAIN_VERSION" "$PR_VERSION" | sort -V | tail -n1)
+          if [ "$PR_VERSION" != "$MAIN_VERSION" ] && [ "$HIGHEST" = "$PR_VERSION" ]; then
+            echo "Version bumped: $MAIN_VERSION -> $PR_VERSION"
+          else
+            echo "VERSION ($PR_VERSION) must be greater than main ($MAIN_VERSION)"
+            exit 1
+          fi
+
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet test server/Kcal.sln
+
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --ci

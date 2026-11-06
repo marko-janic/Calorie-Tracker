@@ -1,0 +1,34 @@
+meta {
+  name: 02 pull
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/sync/pull?cursor={{cursor}}&limit=500
+  body: none
+  auth: bearer
+}
+
+params:query {
+  cursor: {{cursor}}
+  limit: 500
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+script:pre-request {
+  // Everything before the entry pushed by "01 push new entry"
+  bru.setVar("cursor", Number(bru.getEnvVar("entryVersion")) - 1);
+}
+
+tests {
+  test("returns the pushed entry", function () {
+    expect(res.status).to.equal(200);
+    const entry = res.body.entries.find((e) => e.id === bru.getEnvVar("entryId"));
+    expect(entry).to.not.equal(undefined);
+    expect(entry.version).to.equal(Number(bru.getEnvVar("entryVersion")));
+  });
+}

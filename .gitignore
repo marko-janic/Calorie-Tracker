@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.dll
+*.exe
+*.pdb
+
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.cache
+*.log
+
+# Expo
+.expo/
+.expo-shared/
+web-build/
+
+# App
+app/android/
+app/ios/
+app/.expo/
+app/dist/
+
+# Server
+server/Kcal.Server/.data/
+server/Kcal.Server/wwwroot/
+
+# Environment and secrets
+.env
+.env.local
+deploy/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp
+*.tmp
+*.temp
+
+# Bruno
+bruno/.env
+
+# Agent loop
+.agent-loop/
+
+# Planning notes
+plan.md

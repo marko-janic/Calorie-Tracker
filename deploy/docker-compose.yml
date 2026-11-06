@@ -1,0 +1,48 @@
+name: kcal
+
+services:
+  kcal-server:
+    image: ghcr.io/${KCAL_IMAGE_OWNER:?set KCAL_IMAGE_OWNER in .env}/kcal-server:${KCAL_VERSION:-latest}
+    restart: unless-stopped
+    volumes:
+      - kcal-data:/data
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  caddy:
+    image: ghcr.io/${KCAL_IMAGE_OWNER:?set KCAL_IMAGE_OWNER in .env}/kcal-caddy:${KCAL_VERSION:-latest}
+    restart: unless-stopped
+    depends_on:
+      - kcal-server
+    ports:
+      - "${KCAL_HTTPS_PORT:-443}:443/tcp"
+      - "${KCAL_HTTPS_PORT:-443}:443/udp"
+    environment:
+      CLOUDFLARE_API_TOKEN: ${CLOUDFLARE_API_TOKEN:?set CLOUDFLARE_API_TOKEN in .env}
+      KCAL_API_HOST: ${KCAL_API_HOST:-kcal.example.com}
+      KCAL_UI_HOST: ${KCAL_UI_HOST:-ui.kcal.example.com}
+      KCAL_UI_ORIGIN: ${KCAL_UI_ORIGIN:-https://ui.kcal.example.com}
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    labels:
+      com.centurylinklabs.watchtower.enable: "true"
+
+  # Optional automatic updates: docker compose --profile autoupdate up -d
+  # --label-enable limits it to the kcal containers (never Home Assistant or wg-easy).
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    profiles: ["autoupdate"]
+    restart: unless-stopped
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /root/.docker/config.json:/config.json:ro   # only needed if the GHCR images are private
+    command: --label-enable --interval 300 --cleanup
+    environment:
+      # Must be at least the Docker Engine's minimum API version (see `docker version`).
+      DOCKER_API_VERSION: "1.44"
+
+volumes:
+  kcal-data:
+  caddy-data:
+  caddy-config:
