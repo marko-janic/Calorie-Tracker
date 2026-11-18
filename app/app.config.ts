@@ -22,7 +22,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true
   },
   android: {
-    package: 'com.example.kcal',
+    package: 'cloud.janic.kcal',
     versionCode,
     permissions: [
       'android.permission.INTERNET',
