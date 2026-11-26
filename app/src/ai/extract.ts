@@ -127,7 +127,18 @@ function hasExtraKeys(obj: object): boolean {
 
   // Check items
   if ('items' in obj && Array.isArray(obj.items)) {
-    const knownItemKeys = ['name', 'kcal', 'protein_g', 'carbs_g', 'fat_g', 'fibre_g', 'mealType', 'notes'];
+    const knownItemKeys = [
+      'name',
+      'kcal',
+      'protein_g',
+      'carbs_g',
+      'fat_g',
+      'fibre_g',
+      'portionSize',
+      'portionUnit',
+      'mealType',
+      'notes'
+    ];
     for (const item of obj.items) {
       if (typeof item === 'object' && item !== null) {
         const itemKeys = Object.keys(item);

@@ -56,6 +56,8 @@ describe('EntrySchema', () => {
     fatG: 7.2,
     fibreG: 0,
     quantity: 1,
+    portionSize: null,
+    portionUnit: null,
     mealType: null,
     notes: null,
     eatenAt: '2026-11-03T12:30:00+01:00',
@@ -83,6 +85,35 @@ describe('EntrySchema', () => {
 
   it('rejects an eatenLocalDate that differs from the date part of eatenAt', () => {
     expect(EntrySchema.safeParse({ ...entry, eatenLocalDate: '2026-11-02' }).success).toBe(false);
+  });
+
+  describe('portion size and unit', () => {
+    it.each([
+      ['both null', null, null],
+      ['grams', 150, 'g'],
+      ['millilitres', 330, 'ml'],
+      ['the smallest size', 0.1, 'g'],
+      ['the largest size', 10000, 'ml']
+    ])('accepts %s', (_, portionSize, portionUnit) => {
+      expect(EntrySchema.safeParse({ ...entry, portionSize, portionUnit }).success).toBe(true);
+    });
+
+    it.each([
+      ['a size without a unit', 150, null],
+      ['a unit without a size', null, 'g'],
+      ['a size below 0.1', 0.09, 'g'],
+      ['a size above 10000', 10000.1, 'ml'],
+      ['a negative size', -5, 'g'],
+      ['an unknown unit', 150, 'cup'],
+      ['an uppercase unit', 150, 'G']
+    ])('rejects %s', (_, portionSize, portionUnit) => {
+      expect(EntrySchema.safeParse({ ...entry, portionSize, portionUnit }).success).toBe(false);
+    });
+
+    it('rejects an entry without the fields (they are always sent, null when absent)', () => {
+      const { portionSize: _size, portionUnit: _unit, ...withoutFields } = entry;
+      expect(EntrySchema.safeParse(withoutFields).success).toBe(false);
+    });
   });
 });
 

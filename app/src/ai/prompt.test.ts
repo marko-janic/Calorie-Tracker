@@ -31,6 +31,19 @@ describe('buildPrompt', () => {
     expect(prompt).toContain('EU food-label convention');
     expect(prompt).toContain('If a value cannot be estimated, use null');
   });
+
+  it('asks for the amount in portionSize and portionUnit and keeps it out of the name', () => {
+    const prompt = buildPrompt();
+
+    expect(prompt).toContain('Keep the name free of the amount');
+    expect(prompt).toContain('"portionSize"');
+    expect(prompt).toContain('"portionUnit" set to "g" for solid food or "ml" for drinks');
+    expect(prompt).not.toContain('Put the amount into the name');
+  });
+
+  it('states the both-or-neither rule, which the generated JSON Schema cannot express', () => {
+    expect(buildPrompt()).toContain('"portionSize" and "portionUnit" are either both given or both null');
+  });
 });
 
 describe('generateJSONSchema', () => {
@@ -62,6 +75,8 @@ describe('generateJSONSchema', () => {
               carbs_g: { type: ['number', 'null'], minimum: 0, maximum: 2000 },
               fat_g: { type: ['number', 'null'], minimum: 0, maximum: 2000 },
               fibre_g: { type: ['number', 'null'], minimum: 0, maximum: 2000 },
+              portionSize: { type: ['number', 'null'], minimum: 0.1, maximum: 10000 },
+              portionUnit: { enum: ['g', 'ml', null] },
               mealType: { enum: ['breakfast', 'lunch', 'dinner', 'snack', null] },
               notes: { type: ['string', 'null'], maxLength: 1000 }
             }

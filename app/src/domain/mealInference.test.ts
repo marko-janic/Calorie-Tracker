@@ -66,6 +66,8 @@ describe('groupByMeal', () => {
     fatG: null,
     fibreG: null,
     quantity: 1,
+    portionSize: null,
+    portionUnit: null,
     mealType: null,
     notes: null,
     eatenAt,

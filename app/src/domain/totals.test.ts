@@ -1,6 +1,7 @@
 import {
   calculateTotals,
   roundTo1Decimal,
+  formatEntryAmount,
   formatEntryKcal,
   formatMacroLine,
   formatNumber,
@@ -18,6 +19,8 @@ const createEntry = (overrides: Partial<Entry> = {}): Entry => ({
   fatG: 5,
   fibreG: 2,
   quantity: 1,
+  portionSize: null,
+  portionUnit: null,
   mealType: null,
   notes: null,
   eatenAt: '2026-11-03T12:00:00+01:00',
@@ -176,6 +179,21 @@ describe('formatEntryKcal', () => {
   it('applies the quantity and rounds to whole kcal', () => {
     expect(formatEntryKcal({ kcal: 330, quantity: 2 })).toBe('660 kcal');
     expect(formatEntryKcal({ kcal: 95.4, quantity: 1 })).toBe('95 kcal');
+  });
+});
+
+describe('formatEntryAmount', () => {
+  it('multiplies the portion size by the quantity', () => {
+    expect(formatEntryAmount({ portionSize: 150, portionUnit: 'ml', quantity: 2 })).toBe('300 ml');
+    expect(formatEntryAmount({ portionSize: 37.5, portionUnit: 'g', quantity: 1 })).toBe('37.5 g');
+  });
+
+  it('drops floating point noise', () => {
+    expect(formatEntryAmount({ portionSize: 0.1, portionUnit: 'g', quantity: 3 })).toBe('0.3 g');
+  });
+
+  it('is null without a portion size', () => {
+    expect(formatEntryAmount({ portionSize: null, portionUnit: null, quantity: 2 })).toBeNull();
   });
 });
 

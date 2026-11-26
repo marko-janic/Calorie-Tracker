@@ -17,10 +17,10 @@ import {
   toProfileChange
 } from './merge';
 import { parseServerUrl } from './serverUrl';
-import { INITIAL_SNAPSHOT, SyncSnapshot, SyncStatus } from './status';
+import { INITIAL_SNAPSHOT, SyncSnapshot, SyncStatus, UpdateRequiredReason, updateRequiredText } from './status';
 import type { SyncState, SyncStore } from './store';
 import type { DeviceInfo, HealthResponse, PairingCodeResponse } from './types';
-import { isUpdateAvailable, isUpdateRequired } from './versions';
+import { isUpdateAvailable, updateRequiredReason } from './versions';
 
 export const LOCAL_CHANGE_DEBOUNCE_MS = 2_000;
 
@@ -60,10 +60,10 @@ export class InvalidPairingCodeError extends Error {
   }
 }
 
-/** Thrown by `pair` when the server requires a newer app. */
+/** Thrown by `pair` when the server and the app do not fit together. */
 export class UpdateRequiredError extends Error {
-  constructor() {
-    super('Update required to sync');
+  constructor(readonly reason: UpdateRequiredReason) {
+    super(updateRequiredText(reason));
     this.name = 'UpdateRequiredError';
   }
 }
@@ -159,8 +159,9 @@ export class SyncEngine {
   /** Health check of a server before pairing. Throws ApiError, NetworkError or UpdateRequiredError. */
   async checkServer(url: string): Promise<HealthResponse> {
     const health = await this.createApi(this.validateUrl(url)).health();
-    if (isUpdateRequired(health, this.platform.appVersion)) {
-      throw new UpdateRequiredError();
+    const reason = updateRequiredReason(health, this.platform.appVersion);
+    if (reason) {
+      throw new UpdateRequiredError(reason);
     }
     return health;
   }
@@ -252,8 +253,9 @@ export class SyncEngine {
         serverVersion: health.serverVersion,
         updateAvailable: isUpdateAvailable(health, this.platform.appVersion)
       });
-      if (isUpdateRequired(health, this.platform.appVersion)) {
-        await this.finish({ state: 'updateRequired' });
+      const reason = updateRequiredReason(health, this.platform.appVersion);
+      if (reason) {
+        await this.finish({ state: 'updateRequired', reason });
         return;
       }
 

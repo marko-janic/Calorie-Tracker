@@ -5,6 +5,18 @@ export const MealType = z.enum(['breakfast', 'lunch', 'dinner', 'snack']);
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export type MealType = z.infer<typeof MealType>;
 
+// Unit of a portion size: grams for solids, millilitres for drinks (no conversion between them)
+export const PortionUnit = z.enum(['g', 'ml']);
+// eslint-disable-next-line @typescript-eslint/no-redeclare
+export type PortionUnit = z.infer<typeof PortionUnit>;
+
+export const PORTION_SIZE_RANGE = { min: 0.1, max: 10000 };
+
+/** A portion size and its unit are either both set or both empty. */
+export function hasPortionPair(value: { portionSize?: number | null; portionUnit?: PortionUnit | null }): boolean {
+  return (value.portionSize == null) === (value.portionUnit == null);
+}
+
 // Activity level enum
 export const ActivityLevel = z.enum(['sedentary', 'light', 'moderate', 'active', 'veryActive']);
 // eslint-disable-next-line @typescript-eslint/no-redeclare
@@ -33,6 +45,8 @@ export const EntryFieldsSchema = z.object({
   fatG: z.number().min(0).max(2000).nullable(),
   fibreG: z.number().min(0).max(2000).nullable(),
   quantity: z.number().min(0.01).max(100),
+  portionSize: z.number().min(PORTION_SIZE_RANGE.min).max(PORTION_SIZE_RANGE.max).nullable(), // size of one portion, null = unknown
+  portionUnit: PortionUnit.nullable(), // set together with portionSize
   mealType: MealType.nullable(), // null means automatic
   notes: z.string().max(1000).nullable(),
   eatenAt: LocalTimestampSchema, // ISO 8601 local time with offset
@@ -44,10 +58,12 @@ export const EntryFieldsSchema = z.object({
 // Entry schema
 export const EntrySchema = EntryFieldsSchema.extend({
   eatenLocalDate: z.string().date() // YYYY-MM-DD
-}).refine(
-  (data) => data.eatenLocalDate === data.eatenAt.slice(0, 10),
-  { message: 'eatenLocalDate must match the date part of eatenAt' }
-);
+})
+  .refine(
+    (data) => data.eatenLocalDate === data.eatenAt.slice(0, 10),
+    { message: 'eatenLocalDate must match the date part of eatenAt' }
+  )
+  .refine(hasPortionPair, { message: 'portionSize and portionUnit must both be set or both be null' });
 
 export type Entry = z.infer<typeof EntrySchema>;
 
@@ -90,7 +106,18 @@ export type GoalKgPerWeek = Profile['goalKgPerWeek'];
 // The user-editable part of an entry (entry form, AI import)
 export type EntryInput = Pick<
   Entry,
-  'name' | 'kcal' | 'proteinG' | 'carbsG' | 'fatG' | 'fibreG' | 'quantity' | 'mealType' | 'notes' | 'eatenAt'
+  | 'name'
+  | 'kcal'
+  | 'proteinG'
+  | 'carbsG'
+  | 'fatG'
+  | 'fibreG'
+  | 'quantity'
+  | 'portionSize'
+  | 'portionUnit'
+  | 'mealType'
+  | 'notes'
+  | 'eatenAt'
 >;
 
 // The user-editable part of the profile (targets screen)

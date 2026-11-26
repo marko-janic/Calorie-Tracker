@@ -131,6 +131,17 @@ export function formatEntryKcal(entry: Pick<Entry, 'kcal' | 'quantity'>): string
 }
 
 /**
+ * Format the total amount of an entry (portion size × quantity), e.g. "300 ml".
+ * Null if the entry has no portion size.
+ */
+export function formatEntryAmount(entry: Pick<Entry, 'portionSize' | 'portionUnit' | 'quantity'>): string | null {
+  if (entry.portionSize === null || entry.portionUnit === null) {
+    return null;
+  }
+  return `${formatNumber(entry.portionSize * entry.quantity, 1)} ${entry.portionUnit}`;
+}
+
+/**
  * Format the known macronutrients of an entry including its quantity,
  * e.g. "Protein 62 g · Carbs 0 g · Fat 7.2 g". Unknown values are left out.
  */

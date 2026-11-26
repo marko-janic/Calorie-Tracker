@@ -120,6 +120,13 @@ namespace Kcal.Server.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("PortionSize")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("PortionUnit")
+                        .HasMaxLength(10)
+                        .HasColumnType("TEXT");
+
                     b.Property<double?>("ProteinG")
                         .HasColumnType("REAL");
 

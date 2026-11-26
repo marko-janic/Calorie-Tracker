@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Kcal.Server.Services;
 using Xunit;
@@ -30,6 +31,11 @@ public class ValidationTests : IClassFixture<TestWebApplicationFactory>
         { "quantity", "0" },
         { "quantity", "100.5" },
         { "quantity", "0.009" },
+        { "portionSize", "0.09" },
+        { "portionSize", "10000.5" },
+        { "portionSize", "-1" },
+        { "portionUnit", "\"cup\"" },
+        { "portionUnit", "1" },
         { "mealType", "\"brunch\"" },
         { "mealType", "1" },
         { "notes", new string('x', 1001) },
@@ -43,7 +49,9 @@ public class ValidationTests : IClassFixture<TestWebApplicationFactory>
         { "id", "\"not-a-guid\"" },
         { "kcal", null },
         { "name", null },
-        { "eatenAt", null }
+        { "eatenAt", null },
+        { "portionSize", null }, // a unit without a size
+        { "portionUnit", null } // a size without a unit
     };
 
     [Theory]
@@ -114,6 +122,50 @@ public class ValidationTests : IClassFixture<TestWebApplicationFactory>
         var response = await PushAsync(new JsonObject { ["entries"] = new JsonArray(ValidEntry()), ["profile"] = ValidProfile() });
 
         response.EnsureSuccessStatusCode();
+    }
+
+    [Theory]
+    [InlineData("150", "\"g\"")]
+    [InlineData("330", "\"ml\"")]
+    [InlineData("0.1", "\"g\"")]
+    [InlineData("10000", "\"ml\"")]
+    [InlineData("null", "null")]
+    public async Task Push_WithValidPortion_Succeeds(string size, string unit)
+    {
+        var entry = ValidEntry();
+        entry["portionSize"] = ParseValue(size);
+        entry["portionUnit"] = ParseValue(unit);
+
+        var response = await PushAsync(new JsonObject { ["entries"] = new JsonArray(entry) });
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Push_WithoutPortionFields_Succeeds()
+    {
+        var entry = ValidEntry();
+        entry.Remove("portionSize");
+        entry.Remove("portionUnit");
+
+        var response = await PushAsync(new JsonObject { ["entries"] = new JsonArray(entry) });
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    [Fact]
+    public async Task Push_WithPortionSizeWithoutUnit_NamesBothMembers()
+    {
+        var entry = ValidEntry();
+        entry.Remove("portionUnit");
+
+        var response = await PushAsync(new JsonObject { ["entries"] = new JsonArray(entry) });
+
+        await ProblemAssert.HasCodeAsync(response, 400, ErrorCodes.ValidationFailed);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var members = problem.RootElement.GetProperty("errors").EnumerateObject().Select(e => e.Name).ToList();
+        Assert.Contains(members, m => m.EndsWith("PortionSize", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(members, m => m.EndsWith("PortionUnit", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
@@ -208,6 +260,8 @@ public class ValidationTests : IClassFixture<TestWebApplicationFactory>
             ["fatG"] = 5.6,
             ["fibreG"] = 8,
             ["quantity"] = 1,
+            ["portionSize"] = 80,
+            ["portionUnit"] = "g",
             ["mealType"] = "breakfast",
             ["notes"] = null,
             ["eatenAt"] = "2026-11-03T07:30:00+01:00",

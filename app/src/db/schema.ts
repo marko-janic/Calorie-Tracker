@@ -1,6 +1,6 @@
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-import type { ActivityLevel, MealType, Sex } from '../domain/types';
+import type { ActivityLevel, MealType, PortionUnit, Sex } from '../domain/types';
 
 /** Local diary entries (9.3). Nutrient values are per portion; null means unknown. */
 export const entries = sqliteTable(
@@ -14,6 +14,8 @@ export const entries = sqliteTable(
     fatG: real('fat_g'),
     fibreG: real('fibre_g'),
     quantity: real('quantity').notNull().default(1),
+    portionSize: real('portion_size'), // size of one portion, null = unknown
+    portionUnit: text('portion_unit').$type<PortionUnit>(), // set together with portionSize
     mealType: text('meal_type').$type<MealType>(), // null = automatic
     notes: text('notes'),
     eatenAt: text('eaten_at').notNull(), // ISO local time with offset

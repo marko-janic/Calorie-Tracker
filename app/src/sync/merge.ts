@@ -60,6 +60,8 @@ export function toEntryChange(entry: LocalEntry): EntryChange {
     fatG: entry.fatG,
     fibreG: entry.fibreG,
     quantity: entry.quantity,
+    portionSize: entry.portionSize,
+    portionUnit: entry.portionUnit,
     mealType: entry.mealType,
     notes: entry.notes,
     eatenAt: entry.eatenAt,

@@ -10,6 +10,8 @@ public class Entry
     public double? FatG { get; set; }
     public double? FibreG { get; set; }
     public double Quantity { get; set; }
+    public double? PortionSize { get; set; }
+    public PortionUnit? PortionUnit { get; set; }
     public MealType? MealType { get; set; }
     public string? Notes { get; set; }
     public DateTimeOffset EatenAt { get; set; }

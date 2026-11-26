@@ -34,7 +34,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: 'single',
     bundler: 'metro'
   },
-  plugins: ['expo-router', 'expo-font', './plugins/withReleaseSigning.js'],
+  plugins: [
+    'expo-router',
+    'expo-font',
+    ['expo-camera', { cameraPermission: 'Kcal uses the camera to scan product barcodes.', recordAudioAndroid: false }],
+    './plugins/withReleaseSigning.js'
+  ],
   experiments: {
     typedRoutes: true
   },

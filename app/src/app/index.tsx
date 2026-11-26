@@ -1,7 +1,7 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, IconButton, List, Text, useTheme } from 'react-native-paper';
 import { DatePickerModal } from 'react-native-paper-dates';
 
@@ -125,7 +125,7 @@ export default function DayView() {
         <Button
           mode="contained"
           icon="plus"
-          style={styles.action}
+          style={[styles.action, SHOW_SCAN && styles.fullRow]}
           onPress={() => router.push({ pathname: '/entry/new', params: { date } })}
         >
           Add entry
@@ -138,10 +138,23 @@ export default function DayView() {
         >
           AI import
         </Button>
+        {SHOW_SCAN ? (
+          <Button
+            mode="contained-tonal"
+            icon="barcode-scan"
+            style={styles.action}
+            onPress={() => router.push({ pathname: '/entry/scan', params: { date } })}
+          >
+            Scan
+          </Button>
+        ) : null}
       </View>
     </View>
   );
 }
+
+// Scanning is Android only (B1)
+const SHOW_SCAN = Platform.OS === 'android';
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
@@ -149,8 +162,10 @@ const styles = StyleSheet.create({
   dayHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 8 },
   dayTitle: { fontSize: 18 },
   content: { paddingBottom: 16 },
-  actions: { flexDirection: 'row', gap: 12, padding: 16 },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, padding: 16 },
   action: { flex: 1 },
+  // Three buttons do not fit in one row on a phone: "Add entry" gets its own, the others share the next
+  fullRow: { flexBasis: '100%' },
   summary: { marginHorizontal: 16, marginVertical: 8 },
   empty: { textAlign: 'center', marginTop: 24, opacity: 0.7 }
 });

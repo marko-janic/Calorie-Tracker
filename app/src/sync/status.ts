@@ -4,13 +4,16 @@ export type OfflineReason = 'timeout' | 'network' | 'localNetworkPermission';
 
 export type NeedsPairingReason = 'deviceRemoved' | 'serverChanged';
 
+/** Which side is older: the app (download an update) or the server (nothing to download). */
+export type UpdateRequiredReason = 'app' | 'server';
+
 export type SyncStatus =
   | { state: 'disabled' }
   | { state: 'syncing' }
   | { state: 'idle' }
   | { state: 'offline'; reason: OfflineReason }
   | { state: 'needsPairing'; reason: NeedsPairingReason }
-  | { state: 'updateRequired' }
+  | { state: 'updateRequired'; reason: UpdateRequiredReason }
   | { state: 'error'; message: string };
 
 export interface SyncSnapshot {
@@ -57,7 +60,7 @@ export function statusLine(snapshot: SyncSnapshot, formatTime: (utc: string) => 
     case 'needsPairing':
       return needsPairingText(status.reason);
     case 'updateRequired':
-      return 'Update required to sync';
+      return updateRequiredText(status.reason);
     case 'error':
       return 'Sync error';
   }
@@ -70,6 +73,10 @@ export function offlineReasonText(reason: OfflineReason): string {
 
 export function needsPairingText(reason: NeedsPairingReason): string {
   return reason === 'deviceRemoved' ? 'This device was removed – pair again' : 'Server was reset – pair again';
+}
+
+export function updateRequiredText(reason: UpdateRequiredReason): string {
+  return reason === 'app' ? 'Update required to sync' : 'The server is older than this app. Sync is paused.';
 }
 
 export function skippedDeletionsText(count: number): string {

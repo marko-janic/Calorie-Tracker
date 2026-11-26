@@ -23,7 +23,7 @@ public class HealthEndpointTests : IClassFixture<TestWebApplicationFactory>
         Assert.Equal("ok", health.Status);
         Assert.NotEqual(Guid.Empty, health.ServerId);
         Assert.Equal(ReadVersionFile(), health.ServerVersion);
-        Assert.Equal(1, health.ApiVersion);
+        Assert.Equal(2, health.ApiVersion);
         Assert.Equal(ServerInfo.MinAppVersion, health.MinAppVersion);
     }
 

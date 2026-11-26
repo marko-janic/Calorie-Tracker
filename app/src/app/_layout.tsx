@@ -35,6 +35,7 @@ export default function RootLayout() {
                   >
                     <Stack.Screen name="index" options={{ title: 'Kcal' }} />
                     <Stack.Screen name="entry/new" options={{ title: 'Add entry' }} />
+                    <Stack.Screen name="entry/scan" options={{ title: 'Scan barcode' }} />
                     <Stack.Screen name="entry/[id]" options={{ title: 'Edit entry' }} />
                     <Stack.Screen name="import" options={{ title: 'AI import' }} />
                     <Stack.Screen name="targets" options={{ title: 'Targets' }} />

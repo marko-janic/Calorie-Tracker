@@ -1,0 +1,30 @@
+{
+  "code": "4008400402222",
+  "errors": [],
+  "product": {
+    "brands": "Ferrero",
+    "nutriments": {
+      "carbohydrates_100g": 57.5,
+      "carbohydrates_serving": 8.62,
+      "energy-kcal_100g": 539,
+      "energy-kcal_serving": 80.8,
+      "energy_100g": 2252,
+      "fat_100g": 30.9,
+      "fiber_100g": 3,
+      "proteins_100g": 6.3
+    },
+    "product_name": "Nutella",
+    "product_quantity_unit": "g",
+    "quantity": "500g",
+    "serving_quantity": 15,
+    "serving_quantity_unit": "g",
+    "serving_size": "15 g"
+  },
+  "result": {
+    "id": "product_found",
+    "lc_name": "Product found",
+    "name": "Product found"
+  },
+  "status": "success",
+  "warnings": []
+}

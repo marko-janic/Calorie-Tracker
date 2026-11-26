@@ -13,6 +13,12 @@ public enum MealType
     Snack
 }
 
+public enum PortionUnit
+{
+    G,
+    Ml
+}
+
 public enum Sex
 {
     Male,
@@ -113,11 +119,13 @@ public record EntryChangeDTO(
     [Range(0.0, 2000.0)] double? FatG = null,
     [Range(0.0, 2000.0)] double? FibreG = null,
     [Range(0.01, 100.0)] double Quantity = 1,
+    [Range(0.1, 10000.0)] double? PortionSize = null,
+    [EnumDataType(typeof(PortionUnit))] PortionUnit? PortionUnit = null,
     [EnumDataType(typeof(MealType))] MealType? MealType = null,
     [StringLength(1000)] string? Notes = null
 ) : IValidatableObject
 {
-    // Timestamp windows (7.6)
+    // Timestamp windows (7.6) and the portion size and unit, which are set together or not at all
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
         var now = TimestampRules.UtcNow(validationContext);
@@ -125,7 +133,12 @@ public record EntryChangeDTO(
         {
             TimestampRules.Check(nameof(EatenAt), EatenAt, latest: now.AddDays(2)),
             TimestampRules.Check(nameof(LoggedAt), LoggedAt, latest: now.AddDays(1)),
-            TimestampRules.Check(nameof(UpdatedAt), UpdatedAt, latest: now.AddDays(1))
+            TimestampRules.Check(nameof(UpdatedAt), UpdatedAt, latest: now.AddDays(1)),
+            (PortionSize is null) != (PortionUnit is null)
+                ? new ValidationResult(
+                    $"{nameof(PortionSize)} and {nameof(PortionUnit)} must both be set or both be null.",
+                    [nameof(PortionSize), nameof(PortionUnit)])
+                : null
         }.OfType<ValidationResult>();
     }
 }
@@ -211,6 +224,8 @@ public record EntryDTO(
     double? FatG,
     double? FibreG,
     double Quantity,
+    double? PortionSize,
+    PortionUnit? PortionUnit,
     MealType? MealType,
     string? Notes,
     [property: JsonConverter(typeof(LocalDateTimeOffsetJsonConverter))] DateTimeOffset EatenAt,

@@ -133,6 +133,8 @@ public sealed class SyncService(AppDbContext db, TimeProvider time)
         entry.FatG = change.FatG;
         entry.FibreG = change.FibreG;
         entry.Quantity = change.Quantity;
+        entry.PortionSize = change.PortionSize;
+        entry.PortionUnit = change.PortionUnit;
         entry.MealType = change.MealType;
         entry.Notes = change.Notes;
         entry.EatenAt = change.EatenAt;
@@ -175,7 +177,8 @@ public sealed class SyncService(AppDbContext db, TimeProvider time)
 
     private static EntryDTO ToDTO(Entry entry) => new(
         entry.Id, entry.Version, entry.Deleted, entry.UpdatedAt, entry.Name, entry.Kcal,
-        entry.ProteinG, entry.CarbsG, entry.FatG, entry.FibreG, entry.Quantity, entry.MealType,
+        entry.ProteinG, entry.CarbsG, entry.FatG, entry.FibreG, entry.Quantity,
+        entry.PortionSize, entry.PortionUnit, entry.MealType,
         entry.Notes, entry.EatenAt, entry.LoggedAt);
 
     private static ProfileDTO ToDTO(Profile profile) => new(

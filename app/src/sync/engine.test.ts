@@ -97,7 +97,7 @@ class FakeServer {
     health: async (): Promise<HealthResponse> => {
       this.calls.push('health');
       if (this.healthError) throw this.healthError;
-      return { status: 'ok', serverId: this.serverId, serverVersion: '0.2.0', apiVersion: 1, minAppVersion: '0.1.0' };
+      return { status: 'ok', serverId: this.serverId, serverVersion: '0.2.0', apiVersion: 2, minAppVersion: '0.1.0' };
     },
     pair: async (request) => {
       this.calls.push(`pair ${request.code}`);
@@ -172,6 +172,8 @@ const entry = (id: string, overrides: Partial<LocalEntry> = {}): LocalEntry => (
   fatG: null,
   fibreG: null,
   quantity: 1,
+  portionSize: null,
+  portionUnit: null,
   mealType: null,
   notes: null,
   eatenAt: '2026-11-03T12:30:00+01:00',
@@ -366,16 +368,65 @@ describe('SyncEngine', () => {
     expect(engine.getSnapshot().status).toEqual({ state: 'needsPairing', reason: 'deviceRemoved' });
   });
 
-  it('pauses sync when an update is required and reports available updates', async () => {
+  it('pauses sync when the app is too old and reports available updates', async () => {
     const { engine, server } = await paired();
     const health = server.api.health;
     server.api.health = async () => ({ ...(await health()), minAppVersion: '0.2.0' });
 
     await engine.requestSync();
 
-    expect(engine.getSnapshot().status).toEqual({ state: 'updateRequired' });
+    expect(engine.getSnapshot().status).toEqual({ state: 'updateRequired', reason: 'app' });
     expect(engine.getSnapshot().updateAvailable).toBe(true);
     expect(server.calls).toEqual(['health']);
+  });
+
+  it('pauses sync with the server as the older side when it speaks a lower API version', async () => {
+    const { engine, store, server } = await paired();
+    store.entries.set('a', entry('a'));
+    const health = server.api.health;
+    server.api.health = async () => ({ ...(await health()), apiVersion: 1 });
+
+    await engine.requestSync();
+
+    expect(engine.getSnapshot().status).toEqual({ state: 'updateRequired', reason: 'server' });
+    expect(server.calls).toEqual(['health']);
+    expect(store.entries.get('a')?.dirty).toBe(true);
+  });
+
+  it('refuses to pair with a server of another API version and says which side is older', async () => {
+    const { engine, server } = setup();
+    const health = server.api.health;
+
+    server.api.health = async () => ({ ...(await health()), apiVersion: 1 });
+    await expect(engine.pair('https://kcal.example.com', '7K2M-QX9D', 'Phone')).rejects.toMatchObject({
+      name: 'UpdateRequiredError',
+      reason: 'server',
+      message: 'The server is older than this app. Sync is paused.'
+    });
+
+    server.api.health = async () => ({ ...(await health()), apiVersion: 3 });
+    await expect(engine.checkServer('https://kcal.example.com')).rejects.toMatchObject({
+      reason: 'app',
+      message: 'Update required to sync'
+    });
+    expect(server.calls.filter((call) => call.startsWith('pair'))).toEqual([]);
+  });
+
+  it('carries the portion size and unit through push and pull to another device', async () => {
+    const first = await paired();
+    first.store.entries.set('grams', entry('grams', { portionSize: 150, portionUnit: 'g' }));
+    first.store.entries.set('millilitres', entry('millilitres', { portionSize: 330, portionUnit: 'ml' }));
+    first.store.entries.set('none', entry('none'));
+    await first.engine.requestSync();
+
+    const store = new MemoryStore();
+    const second = new SyncEngine({ store, deviceKey, createApi: () => first.server.api, platform });
+    await second.pair('https://kcal.example.com', '7K2M-QX9D', 'Second device');
+    await second.requestSync();
+
+    expect(store.entries.get('grams')).toMatchObject({ portionSize: 150, portionUnit: 'g', dirty: false });
+    expect(store.entries.get('millilitres')).toMatchObject({ portionSize: 330, portionUnit: 'ml', dirty: false });
+    expect(store.entries.get('none')).toMatchObject({ portionSize: null, portionUnit: null });
   });
 
   it('reuses the access token and re-authenticates once when it is rejected', async () => {

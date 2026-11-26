@@ -54,6 +54,8 @@ function entryChange(id, fields) {
     fatG: 7.2,
     fibreG: 0,
     quantity: 1,
+    portionSize: 200,
+    portionUnit: 'g',
     mealType: null,
     notes: null,
     eatenAt: '2026-11-03T12:30:00+01:00',
