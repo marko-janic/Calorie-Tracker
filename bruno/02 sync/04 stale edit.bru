@@ -38,5 +38,7 @@ tests {
     expect(result.status).to.equal("rejected");
     expect(result.reason).to.equal("olderEdit");
     expect(result.current.name).to.equal("Edited elsewhere");
+    expect(result.current.portionSize).to.equal(200);
+    expect(result.current.portionUnit).to.equal("g");
   });
 }

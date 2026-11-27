@@ -21,6 +21,8 @@ const localEntry = (overrides: Partial<LocalEntry> = {}): LocalEntry => ({
   fatG: 5.6,
   fibreG: null,
   quantity: 1,
+  portionSize: null,
+  portionUnit: null,
   mealType: null,
   notes: null,
   eatenAt: '2026-11-03T07:30:00+01:00',
@@ -77,6 +79,24 @@ describe('toEntryChange', () => {
     expect(change).not.toHaveProperty('dirty');
     expect(change).not.toHaveProperty('eatenLocalDate');
     expect(change).not.toHaveProperty('version');
+  });
+
+  it('sends the portion size and unit, and sends null explicitly when there are none', () => {
+    expect(toEntryChange(localEntry({ portionSize: 330, portionUnit: 'ml' }))).toMatchObject({
+      portionSize: 330,
+      portionUnit: 'ml'
+    });
+    expect(toEntryChange(localEntry())).toMatchObject({ portionSize: null, portionUnit: null });
+  });
+});
+
+describe('toLocalEntry', () => {
+  it('keeps the portion size and unit of a server record', () => {
+    expect(toLocalEntry(serverRecord({ portionSize: 150, portionUnit: 'g' }))).toMatchObject({
+      portionSize: 150,
+      portionUnit: 'g',
+      dirty: false
+    });
   });
 });
 

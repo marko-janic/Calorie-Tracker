@@ -50,6 +50,11 @@ public class AppDbContext : DbContext
             v => string.IsNullOrEmpty(v) ? null : Enum.Parse<MealType>(v, ignoreCase: true)
         );
 
+        var portionUnitConverter = new ValueConverter<PortionUnit?, string?>(
+            v => v.HasValue ? v.Value.ToString().ToLowerInvariant() : null,
+            v => string.IsNullOrEmpty(v) ? null : Enum.Parse<PortionUnit>(v, ignoreCase: true)
+        );
+
         var sexConverter = new ValueConverter<Sex, string>(
             v => v.ToString().ToLowerInvariant(),
             v => Enum.Parse<Sex>(v, ignoreCase: true)
@@ -68,6 +73,7 @@ public class AppDbContext : DbContext
 
             entity.Property(e => e.Name).IsRequired().HasMaxLength(200);
             entity.Property(e => e.MealType).HasConversion(mealTypeConverter).HasMaxLength(20);
+            entity.Property(e => e.PortionUnit).HasConversion(portionUnitConverter).HasMaxLength(10);
             entity.Property(e => e.Notes).HasMaxLength(1000);
             entity.Property(e => e.EatenAt).HasConversion(eatenAtConverter);
             entity.Property(e => e.EatenLocalDate).HasConversion(dateOnlyConverter);

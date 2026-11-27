@@ -2,8 +2,9 @@ import { ReactNode, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
-import { NutrientField, NutrientFields, parseNutrientFields } from '../domain/entryForm';
+import { applyFieldChange, NutrientField, NutrientFields, parseNutrientFields } from '../domain/entryForm';
 import type { FieldErrors } from '../domain/formParser';
+import type { Per100 } from '../domain/product';
 import type { EntryInput, MealType } from '../domain/types';
 import { DateTimeChips } from './DateTimeChips';
 import { MealTypeChips } from './MealTypeChips';
@@ -21,16 +22,27 @@ interface EntryFormProps {
   initial: EntryFormValues;
   submitLabel: string;
   onSubmit: (input: EntryInput) => void;
+  /**
+   * The per-100 values of a scanned product. The nutrients then follow the portion size until the
+   * user edits one of them. Read once, like `initial`.
+   */
+  per100?: Per100;
   /** Extra content below the form, e.g. details and actions of the edit screen. */
   children?: ReactNode;
 }
 
 /** The entry form of the add and edit screens (9.2). */
-export function EntryForm({ initial, submitLabel, onSubmit, children }: EntryFormProps) {
-  const [values, setValues] = useState(initial);
+export function EntryForm({ initial, submitLabel, onSubmit, per100, children }: EntryFormProps) {
+  const [values, setValues] = useState<EntryFormValues & { scaling: boolean }>(() => ({
+    ...initial,
+    scaling: per100 !== undefined
+  }));
   const [errors, setErrors] = useState<FieldErrors<NutrientField>>({});
 
   const update = (patch: Partial<EntryFormValues>) => setValues((current) => ({ ...current, ...patch }));
+
+  const changeField = (field: NutrientField, value: string) =>
+    setValues((current) => ({ ...current, ...applyFieldChange(current, field, value, per100) }));
 
   const submit = () => {
     const result = parseNutrientFields(values.fields);
@@ -41,13 +53,14 @@ export function EntryForm({ initial, submitLabel, onSubmit, children }: EntryFor
     onSubmit({ ...result.value, mealType: values.mealType, eatenAt: values.eatenAt });
   };
 
+  const portionHint =
+    values.scaling && per100
+      ? `Nutrients follow the portion size, from the product's values per 100 ${per100.unit}. Editing one stops this.`
+      : undefined;
+
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <NutrientInputs
-        fields={values.fields}
-        errors={errors}
-        onChange={(field, value) => update({ fields: { ...values.fields, [field]: value } })}
-      />
+      <NutrientInputs fields={values.fields} errors={errors} onChange={changeField} portionHint={portionHint} />
       <Text variant="labelLarge" style={styles.label}>
         Meal
       </Text>

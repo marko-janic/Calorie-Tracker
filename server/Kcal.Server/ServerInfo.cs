@@ -5,10 +5,10 @@ namespace Kcal.Server;
 /// <summary>Version information reported by the server (8.2, 8.4).</summary>
 public static class ServerInfo
 {
-    public const int ApiVersion = 1;
+    public const int ApiVersion = 2;
 
     /// <summary>Raise whenever a server change breaks older apps.</summary>
-    public const string MinAppVersion = "0.1.0";
+    public const string MinAppVersion = "0.2.0";
 
     /// <summary>The assembly informational version (from /VERSION) without any +commit suffix.</summary>
     public static string Version { get; } =

@@ -126,6 +126,7 @@ Check after changes: Home Assistant and wg-easy keep working, and `docker ps` sh
 
 Workflows (GitHub-hosted runners):
 - `.github/workflows/pr.yml`: version bump check, server tests, app typecheck, lint and tests.
+- `.github/workflows/pr-apk.yml` (pull requests to `main`): a debug-signed test APK, linked in a comment on the pull request. See "Test APK from a pull request" below.
 - `.github/workflows/release.yml` (push to `main`, manual dispatch): signed APK → server and Caddy images (amd64, arm64) on GHCR, tagged `v<VERSION>` and `latest` → GitHub Release with the APK.
 
 Repository secrets:
@@ -149,3 +150,12 @@ keytool -genkeypair -v -storetype PKCS12 -keystore kcal-release.p12 -alias kcal 
 **Back up `kcal-release.p12` and its password** (e.g. in a password manager). Android only installs updates signed with the same key. Losing it means uninstalling and reinstalling the app; sync restores the data afterwards.
 
 The `GITHUB_TOKEN` covers the GHCR pushes and the release, through the workflow permissions.
+
+### Test APK from a pull request
+
+`pr-apk.yml` builds an APK on every push to a pull request. It links the APK in a comment on the pull request and in the run summary. On the phone, open the link while logged in to GitHub, allow "Install unknown apps" for the browser once, and install it.
+
+- The app is called "Kcal PR" and has its own application ID (`cloud.janic.kcal.pr`, switched by `KCAL_APP_VARIANT=pr` in `app/app.config.ts`). It installs next to the release app, keeps its own local data and is paired like a new device.
+- It is signed with the debug key and the workflow uses no secrets, so it can never replace the release app.
+- It is built for arm64 phones only and kept for 14 days.
+- It uses the API version of the pull request. Against an older server it shows the "server is older" message and works offline only.

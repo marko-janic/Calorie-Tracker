@@ -1,8 +1,8 @@
 import { parseServerUrl } from './serverUrl';
 import { INITIAL_SNAPSHOT, statusLine, skippedDeletionsText } from './status';
-import { compareVersions, isUpdateAvailable, isUpdateRequired } from './versions';
+import { compareVersions, isUpdateAvailable, updateRequiredReason } from './versions';
 
-const health = { status: 'ok', serverId: 'id', serverVersion: '0.4.0', apiVersion: 1, minAppVersion: '0.3.0' };
+const health = { status: 'ok', serverId: 'id', serverVersion: '0.4.0', apiVersion: 2, minAppVersion: '0.3.0' };
 
 describe('versions', () => {
   it('compares versions numerically', () => {
@@ -11,10 +11,19 @@ describe('versions', () => {
     expect(compareVersions('0.1.2', '0.1.10')).toBeLessThan(0);
   });
 
-  it('requires an update for another API version or an older app', () => {
-    expect(isUpdateRequired(health, '0.3.0')).toBe(false);
-    expect(isUpdateRequired(health, '0.2.9')).toBe(true);
-    expect(isUpdateRequired({ ...health, apiVersion: 2 }, '0.4.0')).toBe(true);
+  it('lets sync run when the API version matches and the app is new enough', () => {
+    expect(updateRequiredReason(health, '0.3.0')).toBeNull();
+    expect(updateRequiredReason(health, '0.4.0')).toBeNull();
+  });
+
+  it('blames the app when it is below minAppVersion or the server speaks a newer API version', () => {
+    expect(updateRequiredReason(health, '0.2.9')).toBe('app');
+    expect(updateRequiredReason({ ...health, apiVersion: 3 }, '0.4.0')).toBe('app');
+  });
+
+  it('blames the server when it speaks an older API version, whatever the app version is', () => {
+    expect(updateRequiredReason({ ...health, apiVersion: 1 }, '0.4.0')).toBe('server');
+    expect(updateRequiredReason({ ...health, apiVersion: 1 }, '0.2.9')).toBe('server');
   });
 
   it('reports a newer server version as an available update', () => {
@@ -51,7 +60,10 @@ describe('statusLine', () => {
     expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'offline', reason: 'timeout' }, waiting: 3 }, time)).toBe('Not connected · 3 waiting');
     expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'needsPairing', reason: 'deviceRemoved' } }, time)).toBe('This device was removed – pair again');
     expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'needsPairing', reason: 'serverChanged' } }, time)).toBe('Server was reset – pair again');
-    expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'updateRequired' } }, time)).toBe('Update required to sync');
+    expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'updateRequired', reason: 'app' } }, time)).toBe('Update required to sync');
+    expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'updateRequired', reason: 'server' } }, time)).toBe(
+      'The server is older than this app. Sync is paused.'
+    );
     expect(statusLine({ ...INITIAL_SNAPSHOT, status: { state: 'error', message: 'HTTP 500' } }, time)).toBe('Sync error');
   });
 

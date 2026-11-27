@@ -118,4 +118,62 @@ describe('extractAIImport', () => {
       expect(result.details[0]).toContain('Item 2');
     }
   });
+
+  describe('portion size and unit', () => {
+    const extract = (...items: object[]) => extractAIImport(JSON.stringify({ schemaVersion: 1, items }));
+
+    it('accepts both fields and passes them on', () => {
+      const result = extract({ ...validItem, portionSize: 200, portionUnit: 'g' }, { name: 'Cola', kcal: 139, portionSize: 330, portionUnit: 'ml' });
+
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.items.map((item) => [item.portionSize, item.portionUnit])).toEqual([[200, 'g'], [330, 'ml']]);
+        expect(result.hadExtraKeys).toBe(false);
+      }
+    });
+
+    it('accepts both null and both missing', () => {
+      expect(extract({ ...validItem, portionSize: null, portionUnit: null }).success).toBe(true);
+      expect(extract(validItem).success).toBe(true);
+    });
+
+    it('fails for a size without a unit and names the item and the field', () => {
+      const result = extract(validItem, { ...validItem, portionSize: 150 });
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Validation failed',
+        details: ['Item 2, portionUnit: portionUnit is required when portionSize is given']
+      });
+    });
+
+    it('fails for a unit without a size and names the item and the field', () => {
+      const result = extract({ ...validItem, portionUnit: 'ml' }, validItem);
+
+      expect(result).toEqual({
+        success: false,
+        error: 'Validation failed',
+        details: ['Item 1, portionSize: portionSize is required when portionUnit is given']
+      });
+    });
+
+    it('treats a null on one side like a missing value', () => {
+      expect(extract({ ...validItem, portionSize: 150, portionUnit: null }).success).toBe(false);
+      expect(extract({ ...validItem, portionSize: null, portionUnit: 'g' }).success).toBe(false);
+    });
+
+    it.each([
+      ['an unknown unit', { portionSize: 1, portionUnit: 'cup' }],
+      ['an uppercase unit', { portionSize: 100, portionUnit: 'G' }],
+      ['a size below 0.1', { portionSize: 0.09, portionUnit: 'g' }],
+      ['a size above 10000', { portionSize: 10001, portionUnit: 'g' }],
+      ['a size given as text', { portionSize: '150', portionUnit: 'g' }]
+    ])('fails for %s', (_, portion) => {
+      expect(extract({ ...validItem, ...portion }).success).toBe(false);
+    });
+
+    it('applies the check to a bare array as well', () => {
+      expect(extractAIImport(JSON.stringify([{ ...validItem, portionSize: 150 }])).success).toBe(false);
+    });
+  });
 });

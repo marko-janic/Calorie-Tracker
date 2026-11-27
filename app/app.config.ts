@@ -10,9 +10,13 @@ const version = fs.readFileSync(versionPath, 'utf-8').trim();
 const [major, minor, patch] = version.split('.').map(Number);
 const versionCode = major * 10000 + minor * 100 + patch;
 
+// Pull request builds (KCAL_APP_VARIANT=pr, set by pr-apk.yml) get their own application ID and
+// label. They install next to the release app instead of trying to replace it with another key.
+const isPullRequestBuild = () => process.env.KCAL_APP_VARIANT === 'pr';
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Kcal',
+  name: isPullRequestBuild() ? 'Kcal PR' : 'Kcal',
   slug: 'kcal',
   version,
   orientation: 'portrait',
@@ -22,7 +26,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     supportsTablet: true
   },
   android: {
-    package: 'cloud.janic.kcal',
+    package: isPullRequestBuild() ? 'cloud.janic.kcal.pr' : 'cloud.janic.kcal',
     versionCode,
     permissions: [
       'android.permission.INTERNET',
@@ -34,7 +38,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: 'single',
     bundler: 'metro'
   },
-  plugins: ['expo-router', 'expo-font', './plugins/withReleaseSigning.js'],
+  plugins: [
+    'expo-router',
+    'expo-font',
+    ['expo-camera', { cameraPermission: 'Kcal uses the camera to scan product barcodes.', recordAudioAndroid: false }],
+    './plugins/withReleaseSigning.js'
+  ],
   experiments: {
     typedRoutes: true
   },

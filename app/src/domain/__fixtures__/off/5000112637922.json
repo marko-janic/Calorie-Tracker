@@ -1,0 +1,29 @@
+{
+  "code": "5000112637922",
+  "errors": [],
+  "product": {
+    "brands": "Coca-Cola",
+    "nutriments": {
+      "carbohydrates_100g": 10.6060606060606,
+      "carbohydrates_serving": 35,
+      "energy-kcal_100g": 42.1212121212121,
+      "energy-kcal_serving": 139,
+      "energy_100g": 180.30303030303,
+      "fat_100g": 0,
+      "proteins_100g": 0
+    },
+    "product_name": "Coca Cola",
+    "product_quantity_unit": "ml",
+    "quantity": "330 ml",
+    "serving_quantity": 330,
+    "serving_quantity_unit": "g",
+    "serving_size": "330 g"
+  },
+  "result": {
+    "id": "product_found",
+    "lc_name": "Product found",
+    "name": "Product found"
+  },
+  "status": "success",
+  "warnings": []
+}

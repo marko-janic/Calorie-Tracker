@@ -3,7 +3,7 @@ import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { Banner, Text, TouchableRipple } from 'react-native-paper';
 
 import { formatTimeOfDay } from '../domain/time';
-import { needsPairingText, offlineReasonText, statusLine } from '../sync/status';
+import { needsPairingText, offlineReasonText, statusLine, updateRequiredText } from '../sync/status';
 import { useSyncSnapshot } from './SyncProvider';
 
 /** Local time of a UTC timestamp, e.g. "10:42". */
@@ -48,6 +48,10 @@ export function SyncBanner() {
     );
   }
   if (status.state === 'updateRequired') {
+    if (status.reason === 'server') {
+      // The server is the older side, so there is nothing to download
+      return <Banner visible>{updateRequiredText('server')}</Banner>;
+    }
     return (
       <Banner
         visible

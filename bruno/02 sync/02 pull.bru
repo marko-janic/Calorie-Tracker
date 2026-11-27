@@ -30,5 +30,7 @@ tests {
     const entry = res.body.entries.find((e) => e.id === bru.getEnvVar("entryId"));
     expect(entry).to.not.equal(undefined);
     expect(entry.version).to.equal(Number(bru.getEnvVar("entryVersion")));
+    expect(entry.portionSize).to.equal(200);
+    expect(entry.portionUnit).to.equal("g");
   });
 }

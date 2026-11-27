@@ -1,20 +1,28 @@
 import { StyleSheet, View } from 'react-native';
-import { HelperText, Text, TextInput } from 'react-native-paper';
+import { HelperText, SegmentedButtons, Text, TextInput } from 'react-native-paper';
 
 import type { NutrientField, NutrientFields } from '../domain/entryForm';
 import type { FieldErrors } from '../domain/formParser';
 import { formatKcal, parseDecimalInput } from '../domain/totals';
+import { PortionUnit } from '../domain/types';
 import { NumberField } from './NumberField';
 import { INPUT_THEME } from './theme';
+
+const UNIT_BUTTONS = PortionUnit.options.map((unit) => ({ value: unit, label: unit }));
 
 interface NutrientInputsProps {
   fields: NutrientFields;
   errors: FieldErrors<NutrientField>;
   onChange: (field: NutrientField, value: string) => void;
+  /** A note below the portion size, e.g. that the nutrients follow it. */
+  portionHint?: string;
 }
 
-/** Name, kcal, macros, quantity and notes of an entry, with the live total for quantities other than 1 (9.2). */
-export function NutrientInputs({ fields, errors, onChange }: NutrientInputsProps) {
+/**
+ * Name, kcal, quantity, portion size with its unit, macros and notes of an entry, with the live total
+ * for quantities other than 1 (9.2).
+ */
+export function NutrientInputs({ fields, errors, onChange, portionHint }: NutrientInputsProps) {
   const kcal = parseDecimalInput(fields.kcal);
   const quantity = parseDecimalInput(fields.quantity);
   const liveTotal = kcal !== null && quantity !== null && quantity !== 1 ? `= ${formatKcal(kcal * quantity)} kcal` : null;
@@ -51,6 +59,27 @@ export function NutrientInputs({ fields, errors, onChange }: NutrientInputsProps
       ) : null}
       <View style={styles.row}>
         <View style={styles.cell}>
+          <NumberField
+            label="Portion size"
+            value={fields.portionSize}
+            onChangeText={(value) => onChange('portionSize', value)}
+            error={errors.portionSize}
+          />
+        </View>
+        <View style={styles.cell}>
+          <SegmentedButtons
+            value={fields.portionUnit}
+            onValueChange={(value) => onChange('portionUnit', value)}
+            buttons={UNIT_BUTTONS}
+            density="small"
+            style={styles.unit}
+          />
+          {errors.portionUnit ? <HelperText type="error">{errors.portionUnit}</HelperText> : null}
+        </View>
+      </View>
+      {portionHint ? <HelperText type="info">{portionHint}</HelperText> : null}
+      <View style={styles.row}>
+        <View style={styles.cell}>
           <NumberField label="Protein" suffix="g" value={fields.proteinG} onChangeText={(value) => onChange('proteinG', value)} error={errors.proteinG} />
         </View>
         <View style={styles.cell}>
@@ -84,5 +113,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 8 },
   cell: { flex: 1 },
   gap: { height: 8 },
-  liveTotal: { marginBottom: 8 }
+  liveTotal: { marginBottom: 8 },
+  unit: { marginTop: 4, marginBottom: 8 }
 });

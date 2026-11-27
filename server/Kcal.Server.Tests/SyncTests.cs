@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using Kcal.Server.Data;
 using Kcal.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -132,6 +133,111 @@ public class SyncTests : IClassFixture<TestWebApplicationFactory>
 
         Assert.NotNull((await PullAsync(client, version - 1)).Profile);
         Assert.Null((await PullAsync(client, version)).Profile);
+    }
+
+    // Portion size and unit
+
+    public static TheoryData<double?, PortionUnit?> Portions => new()
+    {
+        { 150, PortionUnit.G },
+        { 330.5, PortionUnit.Ml },
+        { null, null }
+    };
+
+    [Theory]
+    [MemberData(nameof(Portions))]
+    public async Task Portion_RoundTripsThroughPushAndPull(double? size, PortionUnit? unit)
+    {
+        var client = await _factory.CreateDeviceClientAsync();
+        var change = NewEntry(minutes: 0) with { PortionSize = size, PortionUnit = unit };
+
+        await PushAsync(client, change);
+
+        var entry = await GetAsync(client, change.Id);
+        Assert.Equal(size, entry.PortionSize);
+        Assert.Equal(unit, entry.PortionUnit);
+    }
+
+    [Fact]
+    public async Task Edit_ReplacesStoredPortion()
+    {
+        var client = await _factory.CreateDeviceClientAsync();
+        var entry = NewEntry(minutes: 0) with { PortionSize = 150, PortionUnit = PortionUnit.G };
+        var version = (await PushOneAsync(client, entry)).Version!.Value;
+
+        async Task<EntryDTO> EditAsync(int seconds, double? size, PortionUnit? unit)
+        {
+            var edit = entry with { BaseVersion = version, UpdatedAt = At(seconds), PortionSize = size, PortionUnit = unit };
+            var result = await PushOneAsync(client, edit);
+            Assert.Equal(PushStatus.Applied, result.Status);
+            version = result.Version!.Value;
+            return await GetAsync(client, entry.Id);
+        }
+
+        var inMillilitres = await EditAsync(10, 330, PortionUnit.Ml);
+        Assert.Equal(330, inMillilitres.PortionSize);
+        Assert.Equal(PortionUnit.Ml, inMillilitres.PortionUnit);
+
+        var cleared = await EditAsync(20, null, null);
+        Assert.Null(cleared.PortionSize);
+        Assert.Null(cleared.PortionUnit);
+
+        var set = await EditAsync(30, 40, PortionUnit.G);
+        Assert.Equal(40, set.PortionSize);
+        Assert.Equal(PortionUnit.G, set.PortionUnit);
+    }
+
+    [Theory]
+    [MemberData(nameof(Portions))]
+    public async Task RejectedPush_CurrentCarriesPortionOfServerRecord(double? size, PortionUnit? unit)
+    {
+        var (a, b) = (await _factory.CreateDeviceClientAsync("A"), await _factory.CreateDeviceClientAsync("B"));
+        var entry = NewEntry(minutes: 0) with { PortionSize = 40, PortionUnit = PortionUnit.G };
+        var v1 = (await PushOneAsync(a, entry)).Version!.Value;
+        await PushOneAsync(b, entry with { BaseVersion = v1, UpdatedAt = At(600), PortionSize = size, PortionUnit = unit });
+
+        var result = await PushOneAsync(a, entry with { BaseVersion = v1, UpdatedAt = At(540), PortionSize = 999, PortionUnit = PortionUnit.Ml });
+
+        Assert.Equal(PushStatus.Rejected, result.Status);
+        Assert.Equal(size, result.Current!.PortionSize);
+        Assert.Equal(unit, result.Current.PortionUnit);
+    }
+
+    [Fact]
+    public async Task Pull_SendsPortionUnitAsLowercaseTextAndMissingPortionAsNull()
+    {
+        var client = await _factory.CreateDeviceClientAsync();
+        var cursor = await GetHeadCursorAsync(client);
+        var grams = NewEntry(minutes: 1) with { PortionSize = 150, PortionUnit = PortionUnit.G };
+        var millilitres = NewEntry(minutes: 2) with { PortionSize = 330.5, PortionUnit = PortionUnit.Ml };
+        var plain = NewEntry(minutes: 3);
+        await PushAsync(client, grams, millilitres, plain);
+
+        using var json = JsonDocument.Parse(await client.GetStringAsync($"/api/v1/sync/pull?cursor={cursor}"));
+
+        var entries = json.RootElement.GetProperty("entries").EnumerateArray().ToDictionary(e => e.GetProperty("id").GetGuid());
+        Assert.Equal(("150", "\"g\""), WirePortion(entries[grams.Id]));
+        Assert.Equal(("330.5", "\"ml\""), WirePortion(entries[millilitres.Id]));
+        Assert.Equal(("null", "null"), WirePortion(entries[plain.Id]));
+    }
+
+    [Fact]
+    public async Task Push_StoresPortionUnitAsLowercaseText()
+    {
+        var client = await _factory.CreateDeviceClientAsync();
+        var grams = NewEntry(minutes: 1) with { PortionSize = 150, PortionUnit = PortionUnit.G };
+        var millilitres = NewEntry(minutes: 2) with { PortionSize = 330, PortionUnit = PortionUnit.Ml };
+        var plain = NewEntry(minutes: 3);
+        await PushAsync(client, grams, millilitres, plain);
+
+        await using var scope = _factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        async Task<string?> StoredUnitAsync(Guid id) =>
+            await db.Database.SqlQuery<string?>($"SELECT PortionUnit AS Value FROM Entries WHERE Id = {id}").SingleAsync();
+
+        Assert.Equal("g", await StoredUnitAsync(grams.Id));
+        Assert.Equal("ml", await StoredUnitAsync(millilitres.Id));
+        Assert.Null(await StoredUnitAsync(plain.Id));
     }
 
     // Conflict table (6.3)
@@ -381,6 +487,10 @@ public class SyncTests : IClassFixture<TestWebApplicationFactory>
             cursor = page.NextCursor;
         }
     }
+
+    /// <summary>The raw JSON of both portion members. GetProperty throws when a member is omitted, so null must be sent explicitly.</summary>
+    private static (string Size, string Unit) WirePortion(JsonElement entry) =>
+        (entry.GetProperty("portionSize").GetRawText(), entry.GetProperty("portionUnit").GetRawText());
 
     private async Task<long> GetLastSeqAsync()
     {

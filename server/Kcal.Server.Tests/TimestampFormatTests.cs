@@ -26,6 +26,8 @@ public class TimestampFormatTests
             FatG: 5,
             FibreG: 3,
             Quantity: 1,
+            PortionSize: null,
+            PortionUnit: null,
             MealType: MealType.Lunch,
             Notes: null,
             EatenAt: new DateTimeOffset(2026, 11, 3, 12, 30, 0, 0, TimeSpan.FromHours(1)),

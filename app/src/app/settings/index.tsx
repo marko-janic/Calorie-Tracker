@@ -6,7 +6,7 @@ import { Button, Dialog, List, Portal, Text } from 'react-native-paper';
 
 import { syncStateFromRows, syncStateQuery } from '../../db/syncStore';
 import { formatTimestamp } from '../../domain/time';
-import { offlineReasonText, statusLine } from '../../sync/status';
+import { offlineReasonText, statusLine, updateRequiredText } from '../../sync/status';
 import { openAppSettings, syncPlatform } from '../../sync/platform';
 import { useDatabase } from '../../ui/DatabaseProvider';
 import { formatSyncTime } from '../../ui/SyncStatus';
@@ -83,7 +83,17 @@ export default function SettingsScreen() {
         <List.Subheader>About</List.Subheader>
         <List.Item title="App version" description={syncPlatform.appVersion} />
         {snapshot.serverVersion ? <List.Item title="Server version" description={snapshot.serverVersion} /> : null}
-        {status.state === 'updateRequired' ? (
+        <List.Item
+          title="Product data"
+          description="Barcode lookups use Open Food Facts, licensed under the ODbL"
+          descriptionNumberOfLines={3}
+          onPress={() => void Linking.openURL('https://world.openfoodfacts.org')}
+        />
+        {status.state === 'updateRequired' && status.reason === 'server' ? (
+          <Text variant="bodyMedium" style={styles.text}>
+            {updateRequiredText('server')}
+          </Text>
+        ) : status.state === 'updateRequired' ? (
           <Button mode="contained" onPress={getUpdate} style={styles.button}>
             {IS_WEB ? 'Update required – Reload' : 'Update required – Download'}
           </Button>

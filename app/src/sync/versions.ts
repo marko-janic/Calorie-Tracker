@@ -1,7 +1,8 @@
 /** Version checks against the server (9.7). */
+import type { UpdateRequiredReason } from './status';
 import type { HealthResponse } from './types';
 
-export const SUPPORTED_API_VERSION = 1;
+export const SUPPORTED_API_VERSION = 2;
 
 /** Compares two MAJOR.MINOR.PATCH versions; returns a negative number, 0 or a positive number. */
 export function compareVersions(a: string, b: string): number {
@@ -16,9 +17,19 @@ export function compareVersions(a: string, b: string): number {
   return 0;
 }
 
-/** Sync pauses if the server speaks another API version or requires a newer app. */
-export function isUpdateRequired(health: HealthResponse, appVersion: string): boolean {
-  return health.apiVersion !== SUPPORTED_API_VERSION || compareVersions(appVersion, health.minAppVersion) < 0;
+/**
+ * Why sync pauses, or null if app and server fit together. The server is the older side if it speaks
+ * a lower API version than the app (a server rollback, or an old server); the app is the older side
+ * if the server speaks a higher API version or requires a newer app.
+ */
+export function updateRequiredReason(health: HealthResponse, appVersion: string): UpdateRequiredReason | null {
+  if (health.apiVersion < SUPPORTED_API_VERSION) {
+    return 'server';
+  }
+  if (health.apiVersion > SUPPORTED_API_VERSION || compareVersions(appVersion, health.minAppVersion) < 0) {
+    return 'app';
+  }
+  return null;
 }
 
 /** A newer server version means a newer app is available (the APK is bundled with the server). */

@@ -1,0 +1,90 @@
+# Builds a test APK for every pull request and links it on the pull request.
+# Debug-signed, own application ID (see app.config.ts), no secrets: it installs next to the release app.
+name: PR APK
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: pr-apk-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      KCAL_APP_VARIANT: pr
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+          # The Gradle files only exist after the prebuild, so the cache key comes from the npm lock file.
+          cache-dependency-path: app/package-lock.json
+      - name: Prebuild Android project
+        working-directory: app
+        run: |
+          npm ci
+          npx expo prebuild --platform android --clean --no-install
+      - name: Build APK
+        # No KCAL_UPLOAD_* variables here, so Gradle signs with the debug key (withReleaseSigning.js).
+        # arm64 only: it covers current phones and builds much faster than all four ABIs.
+        working-directory: app/android
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=arm64-v8a --no-daemon
+      - name: Name the APK
+        id: apk
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          shopt -s nullglob
+          apks=(app/android/app/build/outputs/apk/release/*.apk)
+          if [ "${#apks[@]}" -ne 1 ]; then
+            echo "Expected one APK, found ${#apks[@]}"
+            exit 1
+          fi
+          name="kcal-pr${PR_NUMBER}-${HEAD_SHA:0:7}.apk"
+          mv "${apks[0]}" "$RUNNER_TEMP/$name"
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "path=$RUNNER_TEMP/$name" >> "$GITHUB_OUTPUT"
+      - name: Upload APK
+        id: upload
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.path }}
+          # A single file, so it downloads as the .apk itself and not inside a zip.
+          archive: false
+          retention-days: 14
+          if-no-files-found: error
+      - name: Write the download note
+        env:
+          APK_NAME: ${{ steps.apk.outputs.name }}
+          APK_URL: ${{ steps.upload.outputs.artifact-url }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            printf 'Test APK for %s (version %s): [%s](%s)\n\n' "${HEAD_SHA:0:7}" "$(tr -d '[:space:]' < VERSION)" "$APK_NAME" "$APK_URL"
+            printf '%s\n' 'It installs next to the release app as "Kcal PR" and keeps its own local data. Downloading needs a GitHub login. The file is kept for 14 days.'
+          } > "$RUNNER_TEMP/apk-note.md"
+          cat "$RUNNER_TEMP/apk-note.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Comment on the pull request
+        # Pull requests from forks get a read-only token and cannot comment.
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >
+          gh pr comment "${{ github.event.pull_request.number }}" --repo "${{ github.repository }}"
+          --edit-last --create-if-none --body-file "$RUNNER_TEMP/apk-note.md"

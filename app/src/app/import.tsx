@@ -8,7 +8,7 @@ import { extractAIImport } from '../ai/extract';
 import { buildPrompt } from '../ai/prompt';
 import type { AIItem } from '../ai/schema';
 import { createEntries } from '../db/entries';
-import { NutrientField, NutrientFields, parseNutrientFields } from '../domain/entryForm';
+import { DEFAULT_PORTION_UNIT, NutrientField, NutrientFields, parseNutrientFields } from '../domain/entryForm';
 import type { FieldErrors } from '../domain/formParser';
 import { changeEatenDate, getNowLocal, getTodayLocalDate, isLocalDate } from '../domain/time';
 import type { EntryInput, MealType } from '../domain/types';
@@ -31,17 +31,19 @@ interface PreviewItem {
 }
 
 function toPreviewItem(item: AIItem, key: number): PreviewItem {
-  const grams = (value: number | null | undefined) => (value === null || value === undefined ? '' : String(value));
+  const numberField = (value: number | null | undefined) => (value === null || value === undefined ? '' : String(value));
   return {
     key,
     fields: {
       name: item.name,
       kcal: String(item.kcal),
-      proteinG: grams(item.protein_g),
-      carbsG: grams(item.carbs_g),
-      fatG: grams(item.fat_g),
-      fibreG: grams(item.fibre_g),
+      proteinG: numberField(item.protein_g),
+      carbsG: numberField(item.carbs_g),
+      fatG: numberField(item.fat_g),
+      fibreG: numberField(item.fibre_g),
       quantity: '1',
+      portionSize: numberField(item.portionSize),
+      portionUnit: item.portionUnit ?? DEFAULT_PORTION_UNIT,
       notes: item.notes ?? ''
     },
     mealType: item.mealType ?? null,
